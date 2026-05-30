@@ -2,336 +2,287 @@ import streamlit as st
 import pandas as pd
 import joblib
 
-# ==========================
-# PAGE CONFIG
-# ==========================
-
 st.set_page_config(
-    page_title="AI Drug Classifier",
-    page_icon="💊",
-    layout="wide"
+    page_title="DrugIQ — Drug Intelligence Platform",
+    page_icon="⬡",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
-
-# ==========================
-# CUSTOM CSS
-# ==========================
 
 st.markdown("""
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html, body, [class*="css"] {
-    font-family: 'Poppins', sans-serif;
+html, body, [class*="css"], .stApp {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #090c14;
+    color: #e8eaf0;
 }
 
-/* Background */
-.stApp {
-    background:
-    linear-gradient(
-    135deg,
-    #050816 0%,
-    #0B1023 30%,
-    #111827 60%,
-    #1E1B4B 100%);
+#MainMenu, footer, header, .stDeployButton { visibility: hidden; }
+.block-container { padding: 2rem 2.5rem 4rem 2.5rem; max-width: 1200px; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: #0d1117; }
+::-webkit-scrollbar-thumb { background: #1e2a40; border-radius: 10px; }
+
+/* ── Background ambient glows ── */
+.stApp::before {
+    content: '';
+    position: fixed;
+    top: -200px; left: -200px;
+    width: 700px; height: 700px;
+    background: radial-gradient(circle, rgba(29,78,216,0.07) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+}
+.stApp::after {
+    content: '';
+    position: fixed;
+    bottom: -200px; right: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(14,165,233,0.05) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
 }
 
-/* Hide Streamlit Branding */
-#MainMenu {visibility:hidden;}
-footer {visibility:hidden;}
-header {visibility:hidden;}
+/* ── Sidebar ── */
+[data-testid="stSidebar"] {
+    background: #0b0f1a !important;
+    border-right: 1px solid rgba(255,255,255,0.05) !important;
+}
+[data-testid="stSidebar"] .block-container { padding: 2rem 1.5rem; }
 
-/* Title */
-.main-title{
-    font-size:64px;
-    font-weight:800;
-    text-align:center;
-    background:linear-gradient(
-    90deg,
-    #ff6b6b,
-    #ffd93d,
-    #6bcb77,
-    #4d96ff);
-    -webkit-background-clip:text;
-    -webkit-text-fill-color:transparent;
-    margin-bottom:0;
+.sidebar-logo {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 2rem; padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.sidebar-logo-mark {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, #1d4ed8, #0ea5e9);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 900; color: white;
+}
+.sidebar-logo-text {
+    font-size: 18px; font-weight: 700;
+    color: #f1f5f9; letter-spacing: -0.3px;
+}
+.sidebar-logo-text span { color: #38bdf8; }
+
+.status-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: rgba(34,197,94,0.08);
+    border: 1px solid rgba(34,197,94,0.2);
+    border-radius: 20px; padding: 6px 14px;
+    font-size: 12px; font-weight: 500; color: #4ade80;
+    margin-bottom: 1.5rem;
+}
+.status-dot {
+    width: 7px; height: 7px;
+    background: #4ade80; border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50% { opacity:0.5; transform:scale(0.8); }
 }
 
-.subtitle{
-    text-align:center;
-    color:#b8c1ec;
-    font-size:18px;
-    margin-bottom:40px;
+.sidebar-section { margin-bottom: 1.8rem; }
+.sidebar-section-title {
+    font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1.2px;
+    color: #475569; margin-bottom: 10px;
+}
+.sidebar-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px; border-radius: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    margin-bottom: 6px; font-size: 13px; color: #94a3b8;
+}
+.sidebar-item-dot { width: 6px; height: 6px; border-radius: 50%; background: #1d4ed8; }
+.sidebar-item strong { color: #cbd5e1; font-weight: 500; }
+
+/* ── Hero ── */
+.hero-section {
+    text-align: center;
+    padding: 3rem 1rem 2.5rem;
+    position: relative;
+}
+.hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(29,78,216,0.1);
+    border: 1px solid rgba(29,78,216,0.25);
+    border-radius: 20px; padding: 6px 16px;
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1px;
+    color: #60a5fa; margin-bottom: 1.5rem;
+}
+.hero-title {
+    font-size: clamp(36px, 5vw, 58px);
+    font-weight: 800; line-height: 1.1;
+    letter-spacing: -1.5px;
+    color: #f8fafc;
+    margin-bottom: 1rem;
+}
+.hero-title span {
+    background: linear-gradient(135deg, #3b82f6, #0ea5e9, #38bdf8);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.hero-subtitle {
+    font-size: 17px; font-weight: 400;
+    color: #64748b; max-width: 480px; margin: 0 auto;
+    line-height: 1.6;
 }
 
-/* Glass Card */
-.glass{
-    background:rgba(255,255,255,0.05);
-    backdrop-filter:blur(18px);
-    padding:30px;
-    border-radius:25px;
-    border:1px solid rgba(255,255,255,0.1);
-    box-shadow:0 8px 32px rgba(0,0,0,0.4);
+/* ── Stat Cards ── */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px; margin-bottom: 2.5rem;
+}
+@media (max-width: 768px) { .stats-grid { grid-template-columns: repeat(2,1fr); } }
+.stat-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px; padding: 20px 22px;
+    transition: border-color 0.2s, transform 0.2s;
+    position: relative; overflow: hidden;
+}
+.stat-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(56,189,248,0.3), transparent);
+}
+.stat-card:hover { border-color: rgba(56,189,248,0.2); transform: translateY(-2px); }
+.stat-label {
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.8px;
+    color: #475569; margin-bottom: 8px;
+}
+.stat-value {
+    font-size: 26px; font-weight: 800;
+    color: #f1f5f9; letter-spacing: -0.5px;
+}
+.stat-sub { font-size: 12px; color: #334155; margin-top: 3px; font-weight: 400; }
+
+/* ── Glass Panel ── */
+.glass-panel {
+    background: rgba(255,255,255,0.025);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 24px; padding: 36px 36px 32px;
+    position: relative; overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.3), 0 20px 60px rgba(0,0,0,0.4);
+    backdrop-filter: blur(20px);
+    margin-bottom: 1.5rem;
+}
+.glass-panel::before {
+    content: '';
+    position: absolute; top: -1px; left: 40px; right: 40px; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(56,189,248,0.4), transparent);
 }
 
-/* Metric Card */
-.metric-card{
-    background:rgba(255,255,255,0.05);
-    border-radius:20px;
-    padding:20px;
-    text-align:center;
-    border:1px solid rgba(255,255,255,0.08);
-    margin-bottom:15px;
+.panel-header { margin-bottom: 28px; }
+.panel-title {
+    font-size: 16px; font-weight: 700;
+    color: #e2e8f0; letter-spacing: -0.2px;
+}
+.panel-desc { font-size: 13px; color: #475569; margin-top: 4px; }
+
+/* ── Form overrides ── */
+[data-testid="stSelectbox"] > div > div,
+[data-testid="stNumberInput"] input,
+[data-testid="stTextInput"] input {
+    background: rgba(255,255,255,0.04) !important;
+    border: 1px solid rgba(255,255,255,0.09) !important;
+    border-radius: 12px !important;
+    color: #e2e8f0 !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 14px !important;
+    transition: border-color 0.2s !important;
+}
+[data-testid="stSelectbox"] > div > div:focus-within,
+[data-testid="stNumberInput"] input:focus {
+    border-color: rgba(56,189,248,0.4) !important;
+    box-shadow: 0 0 0 3px rgba(56,189,248,0.08) !important;
 }
 
-/* Result Card */
-.result-card{
-    background:linear-gradient(
-    135deg,
-    #00c9a7,
-    #00b4d8);
-    border-radius:20px;
-    padding:30px;
-    text-align:center;
-    font-size:32px;
-    font-weight:700;
-    color:white;
-    margin-top:25px;
-    box-shadow:0 0 25px rgba(0,255,200,0.5);
+/* Slider */
+[data-testid="stSlider"] .st-emotion-cache-1gv3huu,
+.stSlider [data-baseweb="slider"] [data-testid="stThumbValue"] {
+    color: #60a5fa !important;
 }
-
-/* Button */
-.stButton > button{
-    width:100%;
-    height:60px;
-    border:none;
-    border-radius:15px;
-    font-size:20px;
-    font-weight:700;
-    color:white;
-    background:linear-gradient(
-    90deg,
-    #7f5af0,
-    #2cb67d);
-    transition:0.3s;
+.stSlider [data-baseweb="slider"] div[role="slider"] {
+    background: #1d4ed8 !important;
+    border: 2px solid #3b82f6 !important;
+    box-shadow: 0 0 10px rgba(59,130,246,0.5) !important;
 }
-
-.stButton > button:hover{
-    transform:translateY(-3px);
-    box-shadow:0 10px 25px rgba(0,255,200,0.4);
+[data-baseweb="slider"] div:first-child div:nth-child(3) {
+    background: linear-gradient(90deg, #1d4ed8, #0ea5e9) !important;
 }
 
 /* Labels */
-label{
-    font-weight:600 !important;
+.stSelectbox label, .stSlider label, [data-testid="stWidgetLabel"] p {
+    font-size: 13px !important; font-weight: 500 !important;
+    color: #94a3b8 !important; letter-spacing: 0.1px;
 }
 
-</style>
-""", unsafe_allow_html=True)
+/* ── Divider ── */
+.form-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+    margin: 24px 0;
+}
 
-# ==========================
-# LOAD MODELS
-# ==========================
+/* ── Model Badge ── */
+.model-info {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(29,78,216,0.08);
+    border: 1px solid rgba(29,78,216,0.2);
+    border-radius: 10px; padding: 8px 14px;
+    font-size: 12px; color: #60a5fa; font-weight: 500;
+    margin-top: 8px;
+}
 
-try:
-    knn_model = joblib.load("knn_model.pkl")
-    lr_model = joblib.load("logistic_model.pkl")
-except Exception as e:
-    st.error(f"Model Loading Error: {e}")
-    st.stop()
+/* ── Predict Button ── */
+.stButton > button {
+    width: 100% !important;
+    height: 58px !important;
+    background: linear-gradient(135deg, #1d4ed8 0%, #0284c7 100%) !important;
+    border: none !important;
+    border-radius: 14px !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 15px !important; font-weight: 600 !important;
+    color: white !important; letter-spacing: 0.2px !important;
+    box-shadow: 0 0 30px rgba(29,78,216,0.3), 0 4px 15px rgba(0,0,0,0.3) !important;
+    transition: all 0.25s ease !important;
+    position: relative; overflow: hidden;
+}
+.stButton > button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 0 50px rgba(29,78,216,0.5), 0 8px 25px rgba(0,0,0,0.4) !important;
+    background: linear-gradient(135deg, #2563eb 0%, #0369a1 100%) !important;
+}
+.stButton > button:active { transform: translateY(0) !important; }
 
-# ==========================
-# SIDEBAR
-# ==========================
-
-with st.sidebar:
-
-    st.title("💊 AI Dashboard")
-
-    st.markdown("---")
-
-    st.markdown("""
-    ### Features
-
-    ✅ KNN Model
-
-    ✅ Logistic Regression
-
-    ✅ Real-Time Prediction
-
-    ✅ ML Powered
-
-    ✅ Luxury UI
-
-    ✅ Fast Processing
-    """)
-
-    st.markdown("---")
-
-    st.success("System Online")
-
-# ==========================
-# HEADER
-# ==========================
-
-st.markdown("""
-<h1 class='main-title'>
-💊 AI Drug Classifier
-</h1>
-
-<p class='subtitle'>
-Next Generation Machine Learning Powered Drug Recommendation System
-</p>
-""", unsafe_allow_html=True)
-
-# ==========================
-# TOP CARDS
-# ==========================
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.markdown("""
-    <div class='metric-card'>
-    <h2>🤖</h2>
-    <h3>2 AI Models</h3>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col2:
-    st.markdown("""
-    <div class='metric-card'>
-    <h2>⚡</h2>
-    <h3>Instant Prediction</h3>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col3:
-    st.markdown("""
-    <div class='metric-card'>
-    <h2>🎯</h2>
-    <h3>High Accuracy</h3>
-    </div>
-    """, unsafe_allow_html=True)
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# ==========================
-# MAIN FORM
-# ==========================
-
-st.markdown("<div class='glass'>", unsafe_allow_html=True)
-
-left, right = st.columns(2)
-
-with left:
-
-    model_choice = st.selectbox(
-        "🧠 Select Model",
-        ["KNN", "Logistic Regression"]
-    )
-
-    age = st.slider(
-        "🎂 Age",
-        1,
-        120,
-        30
-    )
-
-    sex = st.selectbox(
-        "👤 Gender",
-        ["F", "M"]
-    )
-
-with right:
-
-    bp = st.selectbox(
-        "🩸 Blood Pressure",
-        ["LOW", "NORMAL", "HIGH"]
-    )
-
-    cholesterol = st.selectbox(
-        "🧪 Cholesterol",
-        ["NORMAL", "HIGH"]
-    )
-
-    na_to_k = st.slider(
-        "⚗️ Na_to_K Ratio",
-        0.0,
-        50.0,
-        15.0
-    )
-
-predict = st.button("🚀 Predict Drug")
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-# ==========================
-# MODEL SELECTION
-# ==========================
-
-model = (
-    knn_model
-    if model_choice == "KNN"
-    else lr_model
-)
-
-# ==========================
-# PREDICTION
-# ==========================
-
-if predict:
-
-    sex_encoded = 0 if sex == "F" else 1
-
-    bp_mapping = {
-        "HIGH": 0,
-        "LOW": 1,
-        "NORMAL": 2
-    }
-
-    chol_mapping = {
-        "HIGH": 0,
-        "NORMAL": 1
-    }
-
-    input_data = pd.DataFrame({
-        "Age": [age],
-        "Sex": [sex_encoded],
-        "BP": [bp_mapping[bp]],
-        "Cholesterol": [chol_mapping[cholesterol]],
-        "Na_to_K": [na_to_k]
-    })
-
-    try:
-
-        prediction = model.predict(input_data)[0]
-
-        drug_mapping = {
-            0: "DrugY",
-            1: "DrugA",
-            2: "DrugB",
-            3: "DrugC",
-            4: "DrugX"
-        }
-
-        predicted_drug = drug_mapping.get(
-            prediction,
-            str(prediction)
-        )
-
-        st.markdown(
-            f"""
-            <div class="result-card">
-                🏆 Recommended Drug
-                <br><br>
-                {predicted_drug}
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-        st.balloons()
-
-    except Exception as e:
-        st.error(f"Prediction Error: {e}")
+/* ── Result Card ── */
+.result-outer {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(56,189,248,0.15);
+    border-radius: 24px; padding: 36px 32px;
+    text-align: center; position: relative; overflow: hidden;
+    box-shadow: 0 0 60px rgba(29,78,216,0.1), 0 0 0 1px rgba(0,0,0,0.3);
+    animation: fadeUp 0.5s ease forwards;
+}
+@keyframes fadeUp {
+    from { opacity:0; transform: translateY(20px); }
+    to   { opacity:1; transform: translateY(0); }
+}
+.result-outer::before {
+    content: '';
+    position: absolute; top: 0; left: 20%; right: 20%; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(56,189,248,0.6),
