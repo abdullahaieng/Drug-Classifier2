@@ -1,159 +1,24 @@
 import streamlit as st
 import pandas as pd
-from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.metrics import accuracy_score, precision_score
+import joblib
 
 st.set_page_config(page_title="Drug Classifier", page_icon="💊")
 
 st.title("💊 Drug Classifier")
 st.write("Predict the appropriate drug based on patient information.")
 
-# ==========================
-# LOAD DATASET
-# ==========================
-
-df = pd.read_csv("drug200.csv")
-
-# ==========================
-# PREPROCESSING
-# ==========================
-
-X = df.drop("Drug", axis=1)
-y = df["Drug"]
-
-le_sex = LabelEncoder()
-le_bp = LabelEncoder()
-le_chol = LabelEncoder()
-le_drug = LabelEncoder()
-
-X["Sex"] = le_sex.fit_transform(X["Sex"])
-X["BP"] = le_bp.fit_transform(X["BP"])
-X["Cholesterol"] = le_chol.fit_transform(X["Cholesterol"])
-
-y = le_drug.fit_transform(y)
-
-# ==========================
-# TRAIN TEST SPLIT
-# ==========================
-
-X_train, X_test, y_train, y_test = train_test_split(
-    X,
-    y,
-    test_size=0.2,
-    random_state=42
-)
-
-# ==========================
-# SCALING
-# ==========================
-
-scaler = StandardScaler()
-
-X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled = scaler.transform(X_test)
-
-# ==========================
-# TRAIN MODELS
-# ==========================
-
-log_reg_model = LogisticRegression(
-    random_state=42,
-    solver="liblinear"
-)
-
-log_reg_model.fit(
-    X_train_scaled,
-    y_train
-)
-
-knn_model = KNeighborsClassifier()
-
-knn_model.fit(
-    X_train_scaled,
-    y_train
-)
-
-# ==========================
-# MODEL METRICS
-# ==========================
-
-y_pred_lr = log_reg_model.predict(X_test_scaled)
-y_pred_knn = knn_model.predict(X_test_scaled)
-
-lr_accuracy = accuracy_score(
-    y_test,
-    y_pred_lr
-) * 100
-
-lr_precision = precision_score(
-    y_test,
-    y_pred_lr,
-    average="weighted"
-) * 100
-
-knn_accuracy = accuracy_score(
-    y_test,
-    y_pred_knn
-) * 100
-
-knn_precision = precision_score(
-    y_test,
-    y_pred_knn,
-    average="weighted"
-) * 100
-
-# ==========================
-# MODEL SELECTION
-# ==========================
+# Load Models
+knn_model = joblib.load("knn_model.pkl")
+lr_model = joblib.load("logistic_model.pkl")
 
 model_choice = st.selectbox(
     "Select Model",
-    [
-        "Logistic Regression",
-        "KNN"
-    ]
+    ["KNN", "Logistic Regression"]
 )
 
-if model_choice == "Logistic Regression":
-    model = log_reg_model
-    accuracy = lr_accuracy
-    precision = lr_precision
-else:
-    model = knn_model
-    accuracy = knn_accuracy
-    precision = knn_precision
+model = knn_model if model_choice == "KNN" else lr_model
 
-st.subheader("Model Performance")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    st.metric(
-        "Accuracy",
-        f"{accuracy:.2f}%"
-    )
-
-with col2:
-    st.metric(
-        "Precision",
-        f"{precision:.2f}%"
-    )
-
-st.divider()
-
-# ==========================
-# USER INPUT
-# ==========================
-
-age = st.number_input(
-    "Age",
-    min_value=1,
-    max_value=120,
-    value=30
-)
+age = st.number_input("Age", 1, 120, 30)
 
 sex = st.selectbox(
     "Sex",
@@ -176,44 +41,48 @@ na_to_k = st.number_input(
     value=15.0
 )
 
-# ==========================
-# PREDICTION
-# ==========================
-
 if st.button("Predict Drug"):
 
-    input_df = pd.DataFrame({
+    sex_encoded = 0 if sex == "F" else 1
+
+    bp_mapping = {
+        "HIGH": 0,
+        "LOW": 1,
+        "NORMAL": 2
+    }
+
+    chol_mapping = {
+        "HIGH": 0,
+        "NORMAL": 1
+    }
+
+    input_data = pd.DataFrame({
         "Age": [age],
-        "Sex": [sex],
-        "BP": [bp],
-        "Cholesterol": [cholesterol],
+        "Sex": [sex_encoded],
+        "BP": [bp_mapping[bp]],
+        "Cholesterol": [chol_mapping[cholesterol]],
         "Na_to_K": [na_to_k]
     })
 
-    input_df["Sex"] = le_sex.transform(
-        input_df["Sex"]
-    )
+    try:
+        prediction = model.predict(input_data)[0]
 
-    input_df["BP"] = le_bp.transform(
-        input_df["BP"]
-    )
+        drug_mapping = {
+            0: "DrugY",
+            1: "drugA",
+            2: "drugB",
+            3: "drugC",
+            4: "drugX"
+        }
 
-    input_df["Cholesterol"] = le_chol.transform(
-        input_df["Cholesterol"]
-    )
+        predicted_drug = drug_mapping.get(
+            prediction,
+            str(prediction)
+        )
 
-    input_scaled = scaler.transform(
-        input_df
-    )
+        st.success(
+            f"Predicted Drug: {predicted_drug}"
+        )
 
-    prediction = model.predict(
-        input_scaled
-    )[0]
-
-    predicted_drug = le_drug.inverse_transform(
-        [prediction]
-    )[0]
-
-    st.success(
-        f"Predicted Drug: {predicted_drug}"
-    )
+    except Exception as e:
+        st.error(f"Prediction Error: {e}")
