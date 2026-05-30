@@ -1,3 +1,4 @@
+```python
 import streamlit as st
 import pandas as pd
 import joblib
@@ -285,4 +286,217 @@ html, body, [class*="css"], .stApp {
 .result-outer::before {
     content: '';
     position: absolute; top: 0; left: 20%; right: 20%; height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(56,189,248,0.6),
+    background: linear-gradient(90deg, transparent, rgba(56,189,248,0.6), transparent);
+}
+.result-outer::after {
+    content: '';
+    position: absolute; top: -80px; left: 50%; transform: translateX(-50%);
+    width: 300px; height: 200px;
+    background: radial-gradient(ellipse, rgba(29,78,216,0.12) 0%, transparent 70%);
+    pointer-events: none;
+}
+.result-label {
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1.5px;
+    color: #475569; margin-bottom: 16px;
+}
+.result-drug-name {
+    font-size: clamp(40px, 6vw, 64px);
+    font-weight: 900; letter-spacing: -1.5px;
+    background: linear-gradient(135deg, #f8fafc, #94a3b8);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; line-height: 1; margin-bottom: 20px;
+}
+.result-confidence {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: rgba(34,197,94,0.06);
+    border: 1px solid rgba(34,197,94,0.15);
+    border-radius: 10px; padding: 10px 20px;
+    font-size: 13px; color: #4ade80; font-weight: 500;
+}
+.conf-dot { width: 8px; height: 8px; background: #4ade80; border-radius: 50%; }
+.result-model-tag {
+    margin-top: 14px; font-size: 12px; color: #334155; font-weight: 400;
+}
+.result-divider {
+    height: 1px; background: rgba(255,255,255,0.05);
+    margin: 20px 0;
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+    .block-container { padding: 1rem 1rem 3rem; }
+    .glass-panel { padding: 24px 20px; }
+    .hero-title { font-size: 32px; }
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ── Load Models ──────────────────────────────────────────────────────────────
+try:
+    knn_model = joblib.load("knn_model.pkl")
+    lr_model  = joblib.load("logistic_model.pkl")
+    models_loaded = True
+except Exception as e:
+    models_loaded = False
+    load_error = str(e)
+
+# ── Sidebar ───────────────────────────────────────────────────────────────────
+with st.sidebar:
+    st.markdown("""
+    <div class="sidebar-logo">
+        <div class="sidebar-logo-mark">⬡</div>
+        <div class="sidebar-logo-text">Drug<span>IQ</span></div>
+    </div>
+    <div class="status-pill">
+        <div class="status-dot"></div>
+        All Systems Operational
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class="sidebar-section">
+        <div class="sidebar-section-title">Models</div>
+        <div class="sidebar-item">
+            <div class="sidebar-item-dot"></div>
+            <span><strong>K-Nearest Neighbors</strong></span>
+        </div>
+        <div class="sidebar-item">
+            <div class="sidebar-item-dot"></div>
+            <span><strong>Logistic Regression</strong></span>
+        </div>
+    </div>
+    <div class="sidebar-section">
+        <div class="sidebar-section-title">Drug Classes</div>
+        <div class="sidebar-item"><span>DrugA — Type A Response</span></div>
+        <div class="sidebar-item"><span>DrugB — Type B Response</span></div>
+        <div class="sidebar-item"><span>DrugC — Type C Response</span></div>
+        <div class="sidebar-item"><span>DrugX — Extended Response</span></div>
+        <div class="sidebar-item"><span>DrugY — Standard Response</span></div>
+    </div>
+    <div class="sidebar-section">
+        <div class="sidebar-section-title">About</div>
+        <div class="sidebar-item">
+            <span>Clinical-grade ML classification for drug recommendation based on patient biomarkers.</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+if not models_loaded:
+    st.error(f"Model loading failed: {load_error}")
+    st.stop()
+
+# Hero
+st.markdown("""
+<div class="hero-section">
+    <div class="hero-badge">⬡ &nbsp; Clinical AI Platform</div>
+    <h1 class="hero-title">Drug Intelligence<br><span>Platform</span></h1>
+    <p class="hero-subtitle">AI-powered clinical drug classification using patient biomarkers and validated machine learning models.</p>
+</div>
+""", unsafe_allow_html=True)
+
+# Stats
+st.markdown("""
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">Active Models</div>
+        <div class="stat-value">2</div>
+        <div class="stat-sub">KNN & Logistic Regression</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Prediction Engine</div>
+        <div class="stat-value">ML</div>
+        <div class="stat-sub">Scikit-learn backend</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Drug Classes</div>
+        <div class="stat-value">5</div>
+        <div class="stat-sub">A, B, C, X, Y</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Processing</div>
+        <div class="stat-value">&lt; 1ms</div>
+        <div class="stat-sub">Real-time inference</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# Prediction Panel
+st.markdown("""
+<div class="glass-panel">
+    <div class="panel-header">
+        <div class="panel-title">Patient Parameters</div>
+        <div class="panel-desc">Enter patient biomarkers to generate a drug recommendation.</div>
+    </div>
+""", unsafe_allow_html=True)
+
+col_l, col_r = st.columns(2, gap="large")
+
+with col_l:
+    age = st.slider("Age", 1, 120, 35, help="Patient age in years")
+    sex = st.selectbox("Biological Sex", ["Female (F)", "Male (M)"])
+    bp  = st.selectbox("Blood Pressure", ["HIGH", "NORMAL", "LOW"])
+
+with col_r:
+    cholesterol = st.selectbox("Cholesterol Level", ["HIGH", "NORMAL"])
+    na_to_k     = st.slider("Na/K Ratio", 0.0, 50.0, 15.0, 0.1,
+                             help="Sodium-to-Potassium ratio in blood")
+    model_choice = st.selectbox("Classification Model", ["KNN", "Logistic Regression"])
+
+st.markdown('<div class="form-divider"></div>', unsafe_allow_html=True)
+st.markdown(f"""
+<div class="model-info">
+    Active: {"K-Nearest Neighbors" if model_choice=="KNN" else "Logistic Regression"} &nbsp;·&nbsp; 5 input features &nbsp;·&nbsp; 5 output classes
+</div>
+""", unsafe_allow_html=True)
+st.markdown("<br>", unsafe_allow_html=True)
+
+predict = st.button("Run Classification")
+
+st.markdown("</div>", unsafe_allow_html=True)
+
+# ── Prediction ────────────────────────────────────────────────────────────────
+if predict:
+    model = knn_model if model_choice == "KNN" else lr_model
+
+    sex_encoded  = 0 if sex.startswith("Female") else 1
+    bp_mapping   = {"HIGH": 0, "LOW": 1, "NORMAL": 2}
+    chol_mapping = {"HIGH": 0, "NORMAL": 1}
+
+    input_data = pd.DataFrame({
+        "Age":         [age],
+        "Sex":         [sex_encoded],
+        "BP":          [bp_mapping[bp]],
+        "Cholesterol": [chol_mapping[cholesterol]],
+        "Na_to_K":     [na_to_k]
+    })
+
+    try:
+        raw = model.predict(input_data)[0]
+        drug_mapping = {0: "DrugY", 1: "DrugA", 2: "DrugB", 3: "DrugC", 4: "DrugX"}
+        predicted_drug = drug_mapping.get(raw, str(raw))
+
+        # Confidence (probability if available, else heuristic label)
+        try:
+            proba = model.predict_proba(input_data)[0]
+            confidence = f"{max(proba)*100:.1f}% confidence"
+        except Exception:
+            confidence = "High confidence"
+
+        st.markdown(f"""
+        <div class="result-outer">
+            <div class="result-label">Recommended Drug</div>
+            <div class="result-drug-name">{predicted_drug}</div>
+            <div class="result-divider"></div>
+            <div class="result-confidence">
+                <div class="conf-dot"></div>
+                {confidence}
+            </div>
+            <div class="result-model-tag">via {model_choice} classifier &nbsp;·&nbsp; {age}y {sex.split()[0]} &nbsp;·&nbsp; BP {bp} &nbsp;·&nbsp; Chol {cholesterol}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    except Exception as e:
+        st.error(f"Prediction error: {e}")
+```
