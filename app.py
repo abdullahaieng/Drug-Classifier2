@@ -8,7 +8,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("💊 DrugIQ - Drug Classifier")
+st.title("Drug Classifier")
 
 # Load Models
 try:
