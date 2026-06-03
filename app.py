@@ -2,13 +2,13 @@ import streamlit as st
 import pandas as pd
 import joblib
 
-# Page Settings
+# Page Config
 st.set_page_config(
     page_title="DrugIQ",
     layout="wide"
 )
 
-st.title("Drug Classifier")
+st.title("💊 DrugIQ - Drug Classifier")
 
 # Load Models
 try:
@@ -19,7 +19,7 @@ except Exception as e:
     st.error(f"Model loading failed: {e}")
     st.stop()
 
-# User Input
+# User Inputs
 age = st.slider("Age", 1, 120, 35)
 
 sex = st.selectbox(
@@ -44,13 +44,12 @@ na_to_k = st.slider(
     15.0
 )
 
-# Model Selection
 model_choice = st.selectbox(
     "Select Model",
     ["KNN", "Logistic Regression"]
 )
 
-# Prediction Button
+# Predict Button
 if st.button("Predict Drug"):
 
     # Encoding
@@ -67,7 +66,7 @@ if st.button("Predict Drug"):
         "NORMAL": 1
     }
 
-    # Input DataFrame
+    # Input Data
     input_data = pd.DataFrame({
         "Age": [age],
         "Sex": [sex_encoded],
@@ -77,31 +76,36 @@ if st.button("Predict Drug"):
     })
 
     # Select Model
-    model = (
-        knn_model
-        if model_choice == "KNN"
-        else lr_model
-    )
+    model = knn_model if model_choice == "KNN" else lr_model
 
     try:
 
         # Prediction
         prediction = model.predict(input_data)[0]
 
-        # Debug Information
-        st.subheader("Debug Info")
-
+        # Convert numpy type to int if possible
         try:
-            st.write("Model Classes:", model.classes_)
+            prediction = int(prediction)
         except:
             pass
 
-        st.write("Raw Prediction:", prediction)
+        # Drug Mapping
+        drug_mapping = {
+            0: "DrugA",
+            1: "DrugB",
+            2: "DrugC",
+            3: "DrugX",
+            4: "DrugY"
+        }
 
-        # Show Result
-        st.success(
-            f"Recommended Drug: {prediction}"
-        )
+        # Get Drug Name
+        if prediction in drug_mapping:
+            predicted_drug = drug_mapping[prediction]
+        else:
+            predicted_drug = str(prediction)
+
+        # Result
+        st.success(f"💊 Recommended Drug: {predicted_drug}")
 
         # Confidence
         try:
@@ -113,22 +117,19 @@ if st.button("Predict Drug"):
                 f"Confidence: {confidence:.2f}%"
             )
 
-            st.subheader("Class Probabilities")
-
-            for drug, prob in zip(
-                model.classes_,
-                probability
-            ):
-                st.write(
-                    f"{drug}: {prob*100:.2f}%"
-                )
-
         except:
-            st.warning(
-                "Probability not available for this model."
-            )
+            pass
+
+        # Debug Section
+        with st.expander("Debug Info"):
+
+            st.write("Prediction Value:", prediction)
+            st.write("Prediction Type:", type(prediction))
+
+            try:
+                st.write("Model Classes:", model.classes_)
+            except:
+                st.write("Classes not available")
 
     except Exception as e:
-        st.error(
-            f"Prediction error: {e}"
-        )
+        st.error(f"Prediction error: {e}")
